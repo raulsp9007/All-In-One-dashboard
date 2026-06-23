@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GitHub Actions Monitor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0F172A;
+      --surface:   #1E293B;
+      --surface2:  #334155;
+      --green:     #22C55E;
+      --red:       #EF4444;
+      --yellow:    #EAB308;
+      --text:      #F8FAFC;
+      --muted:     #94A3B8;
+      --border:    #334155;
+      --radius:    8px;
+    }
+
+    body {
+      font-family: 'Space Mono', monospace;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+
+    .container { max-width: 860px; margin: 0 auto; }
+
+    /* ── Header ── */
+    header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    header svg { color: var(--muted); flex-shrink: 0; }
+    .header-text h1 { font-size: 1.25rem; font-weight: 700; }
+    .header-text p { font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
+
+    /* ── Config panel ── */
+    .config {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      margin-bottom: 1.5rem;
+    }
+    .config-title {
+      font-size: 0.7rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 1rem;
+    }
+    .config-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+    }
+    @media (max-width: 600px) { .config-grid { grid-template-columns: 1fr; } }
+
+    .field { display: flex; flex-direction: column; gap: 4px; }
+    .field.full { grid-column: 1 / -1; }
+    label { font-size: 0.7rem; color: var(--muted); }
+    input {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-family: 'Space Mono', monospace;
+      font-size: 0.8rem;
+      padding: 0.5rem 0.75rem;
+      outline: none;
+      transition: border-color 200ms;
+    }
+    input:focus { border-color: var(--green); }
+    input::placeholder { color: var(--surface2); }
+
+    .btn {
+      background: var(--green);
+      border: none;
+      border-radius: var(--radius);
+      color: #0F172A;
+      cursor: pointer;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.8rem;
+      font-weight: 700;
+      padding: 0.6rem 1.25rem;
+      transition: opacity 200ms, transform 150ms;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+    }
+    .btn:hover { opacity: 0.88; }
+    .btn:active { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+
+    /* ── Status card ── */
+    .status-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      display: none;
+    }
+    .status-card.visible { display: block; }
+
+    .status-header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+    }
+    .status-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .status-dot.success { background: var(--green); box-shadow: 0 0 10px var(--green); }
+    .status-dot.failure, .status-dot.cancelled { background: var(--red); box-shadow: 0 0 10px var(--red); }
+    .status-dot.in_progress, .status-dot.queued { background: var(--yellow); box-shadow: 0 0 10px var(--yellow); }
+    .status-dot.unknown { background: var(--muted); }
+
+    .status-label {
+      font-size: 1rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .status-label.success { color: var(--green); }
+    .status-label.failure, .status-label.cancelled { color: var(--red); }
+    .status-label.in_progress, .status-label.queued { color: var(--yellow); }
+
+    .status-meta {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1rem;
+    }
+    .meta-item { display: flex; flex-direction: column; gap: 3px; }
+    .meta-label { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+    .meta-value { font-size: 0.85rem; }
+
+    .link-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.75rem;
+      color: var(--red);
+      text-decoration: none;
+      border: 1px solid var(--red);
+      border-radius: var(--radius);
+      padding: 0.3rem 0.75rem;
+      transition: background 200ms;
+      cursor: pointer;
+    }
+    .link-btn:hover { background: rgba(239,68,68,0.12); }
+    .link-btn.success-link { color: var(--green); border-color: var(--green); }
+    .link-btn.success-link:hover { background: rgba(34,197,94,0.12); }
+
+    /* ── History ── */
+    .history-title {
+      font-size: 0.7rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 0.75rem;
+    }
+    .run-row {
+      display: grid;
+      grid-template-columns: 28px 1fr auto auto;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.65rem 0;
+      border-bottom: 1px solid rgba(51,65,85,0.5);
+      font-size: 0.78rem;
+    }
+    .run-row:last-child { border-bottom: none; }
+    .run-icon { display: flex; align-items: center; justify-content: center; }
+    .run-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .run-time { color: var(--muted); font-size: 0.7rem; white-space: nowrap; }
+    .run-link {
+      color: var(--muted);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      font-size: 0.7rem;
+      transition: color 200ms;
+    }
+    .run-link:hover { color: var(--text); }
+
+    /* ── Error / empty states ── */
+    .alert {
+      background: rgba(239,68,68,0.1);
+      border: 1px solid rgba(239,68,68,0.3);
+      border-radius: var(--radius);
+      color: var(--red);
+      font-size: 0.8rem;
+      padding: 0.875rem 1rem;
+      margin-bottom: 1.5rem;
+      display: none;
+    }
+    .alert.visible { display: block; }
+
+    .spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(15,23,42,0.3);
+      border-top-color: #0F172A;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .pulse {
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+    .refresh-note {
+      font-size: 0.65rem;
+      color: var(--muted);
+      margin-top: 0.5rem;
+      text-align: right;
+    }
+    .last-checked { font-size: 0.65rem; color: var(--surface2); margin-top: 1rem; text-align: center; }
+
+    @media (prefers-reduced-motion: reduce) {
+      .spinner, .pulse { animation: none; }
+      .btn, .link-btn, input { transition: none; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <header>
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <circle cx="12" cy="12" r="10"/>
+      <polyline points="12 6 12 12 16 14"/>
+    </svg>
+    <div class="header-text">
+      <h1>GitHub Actions Monitor</h1>
+      <p>Live workflow status via GitHub API — no backend needed</p>
+    </div>
+  </header>
+
+  <!-- Config -->
+  <div class="config">
+    <div class="config-title">Configuration</div>
+    <div class="config-grid">
+      <div class="field">
+        <label for="owner">Repository Owner</label>
+        <input id="owner" type="text" placeholder="e.g. octocat" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="field">
+        <label for="repo">Repository Name</label>
+        <input id="repo" type="text" placeholder="e.g. hello-world" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="field">
+        <label for="workflow">Workflow File or ID</label>
+        <input id="workflow" type="text" placeholder="e.g. ci.yml or 12345678" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="field">
+        <label for="token">GitHub Token <span style="color:var(--surface2)">(optional — raises limit to 5000 req/hr)</span></label>
+        <input id="token" type="password" placeholder="ghp_••••••••••••••••" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="field full">
+        <label for="timezone">Timezone</label>
+        <input id="timezone" type="text" placeholder="e.g. America/Los_Angeles" value="America/Los_Angeles" autocomplete="off" spellcheck="false">
+      </div>
+    </div>
+    <button class="btn" id="fetchBtn" onclick="fetchWorkflow()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4"/></svg>
+      Fetch Status
+    </button>
+  </div>
+
+  <!-- Error -->
+  <div class="alert" id="alertBox"></div>
+
+  <!-- Latest run status -->
+  <div class="status-card" id="statusCard">
+    <div class="status-header">
+      <div class="status-dot" id="statusDot"></div>
+      <div class="status-label" id="statusLabel"></div>
+      <a id="logsLink" href="#" target="_blank" rel="noopener" style="margin-left:auto; display:none"></a>
+    </div>
+    <div class="status-meta" id="statusMeta"></div>
+  </div>
+
+  <!-- History -->
+  <div id="historySection" style="display:none">
+    <div class="history-title">Last 10 runs</div>
+    <div id="historyList"></div>
+  </div>
+
+  <div class="last-checked" id="lastChecked"></div>
+</div>
+
+<script>
+  const TZ_DEFAULT = 'America/Los_Angeles';
+
+  function fmt(iso, tz) {
+    try {
+      return new Date(iso).toLocaleString('en-US', {
+        timeZone: tz || TZ_DEFAULT,
+        month: 'short', day: 'numeric',
+        hour: '2-digit', minute: '2-digit',
+        hour12: true,
+      });
+    } catch { return iso; }
+  }
+
+  function dur(start, end) {
+    if (!start || !end) return '—';
+    const s = Math.round((new Date(end) - new Date(start)) / 1000);
+    if (s < 60) return s + 's';
+    return Math.floor(s / 60) + 'm ' + (s % 60) + 's';
+  }
+
+  function statusColor(conclusion, status) {
+    const s = conclusion || status;
+    if (s === 'success') return 'success';
+    if (s === 'failure' || s === 'cancelled') return s;
+    if (s === 'in_progress' || s === 'queued') return s;
+    return 'unknown';
+  }
+
+  function statusIcon(conclusion, status) {
+    const cls = statusColor(conclusion, status);
+    if (cls === 'success') return successSVG();
+    if (cls === 'failure' || cls === 'cancelled') return failSVG();
+    if (cls === 'in_progress' || cls === 'queued') return pendingSVG();
+    return unknownSVG();
+  }
+
+  function successSVG() {
+    return `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22C55E" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`;
+  }
+  function failSVG() {
+    return `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+  }
+  function pendingSVG() {
+    return `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#EAB308" stroke-width="2.5" class="pulse"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`;
+  }
+  function unknownSVG() {
+    return `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`;
+  }
+  function extSVG() {
+    return `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>`;
+  }
+
+  function showError(msg) {
+    const el = document.getElementById('alertBox');
+    el.textContent = msg;
+    el.classList.add('visible');
+  }
+  function clearError() {
+    const el = document.getElementById('alertBox');
+    el.classList.remove('visible');
+    el.textContent = '';
+  }
+
+  async function fetchWorkflow() {
+    clearError();
+    const owner    = document.getElementById('owner').value.trim();
+    const repo     = document.getElementById('repo').value.trim();
+    const workflow = document.getElementById('workflow').value.trim();
+    const token    = document.getElementById('token').value.trim();
+    const tz       = document.getElementById('timezone').value.trim() || TZ_DEFAULT;
+
+    if (!owner || !repo || !workflow) {
+      showError('Fill in Owner, Repository, and Workflow fields.');
+      return;
+    }
+
+    const btn = document.getElementById('fetchBtn');
+    btn.disabled = true;
+    btn.innerHTML = `<span class="spinner"></span> Fetching…`;
+
+    try {
+      const headers = { 'Accept': 'application/vnd.github+json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const url = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/actions/workflows/${encodeURIComponent(workflow)}/runs?per_page=10`;
+      const res = await fetch(url, { headers });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        const msg = data.message || `HTTP ${res.status}`;
+        if (res.status === 404) throw new Error(`404 Not Found — check owner, repo, and workflow name. (${msg})`);
+        if (res.status === 403) throw new Error(`403 Forbidden — rate limited or token missing. (${msg})`);
+        if (res.status === 401) throw new Error(`401 Unauthorized — token is invalid. (${msg})`);
+        throw new Error(`API error: ${msg}`);
+      }
+
+      const data = await res.json();
+      const runs = data.workflow_runs || [];
+
+      if (!runs.length) {
+        showError('No workflow runs found. The workflow may have never executed.');
+        document.getElementById('statusCard').classList.remove('visible');
+        document.getElementById('historySection').style.display = 'none';
+        return;
+      }
+
+      renderStatus(runs[0], tz);
+      renderHistory(runs, tz);
+
+      const now = new Date().toLocaleString('en-US', { timeZone: tz, hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+      document.getElementById('lastChecked').textContent = `Last checked: ${now} (${tz})`;
+
+    } catch (err) {
+      showError(err.message);
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4"/></svg> Fetch Status`;
+    }
+  }
+
+  function renderStatus(run, tz) {
+    const cls = statusColor(run.conclusion, run.status);
+    const label = (run.conclusion || run.status || 'unknown').replace(/_/g, ' ');
+
+    document.getElementById('statusDot').className = `status-dot ${cls}`;
+    document.getElementById('statusLabel').className = `status-label ${cls}`;
+    document.getElementById('statusLabel').textContent = label;
+
+    const link = document.getElementById('logsLink');
+    link.href = run.html_url;
+    link.className = cls === 'success' ? 'link-btn success-link' : 'link-btn';
+    link.innerHTML = `${extSVG()} View logs`;
+    link.style.display = 'inline-flex';
+
+    document.getElementById('statusMeta').innerHTML = `
+      <div class="meta-item">
+        <span class="meta-label">Run</span>
+        <span class="meta-value">#${run.run_number}</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Started</span>
+        <span class="meta-value">${fmt(run.run_started_at || run.created_at, tz)}</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Duration</span>
+        <span class="meta-value">${dur(run.run_started_at || run.created_at, run.updated_at)}</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Branch</span>
+        <span class="meta-value">${run.head_branch || '—'}</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Commit</span>
+        <span class="meta-value" style="font-size:0.75rem;color:var(--muted)">${(run.head_sha || '').slice(0, 7) || '—'}</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Triggered by</span>
+        <span class="meta-value">${run.event || '—'}</span>
+      </div>
+    `;
+
+    document.getElementById('statusCard').classList.add('visible');
+  }
+
+  function renderHistory(runs, tz) {
+    const list = document.getElementById('historyList');
+    list.innerHTML = runs.map(run => {
+      const cls = statusColor(run.conclusion, run.status);
+      const label = (run.conclusion || run.status || '?').replace(/_/g, ' ');
+      return `
+        <div class="run-row">
+          <div class="run-icon">${statusIcon(run.conclusion, run.status)}</div>
+          <div class="run-name" title="${run.name || 'Run #' + run.run_number}">#${run.run_number} — ${run.head_branch || ''}</div>
+          <div class="run-time">${fmt(run.run_started_at || run.created_at, tz)}</div>
+          <a class="run-link" href="${run.html_url}" target="_blank" rel="noopener" title="Open logs">${extSVG()} logs</a>
+        </div>`;
+    }).join('');
+    document.getElementById('historySection').style.display = 'block';
+  }
+
+  // Load saved config from sessionStorage
+  ['owner','repo','workflow','timezone'].forEach(id => {
+    const saved = sessionStorage.getItem('gam_' + id);
+    if (saved) document.getElementById(id).value = saved;
+    document.getElementById(id).addEventListener('input', e => {
+      sessionStorage.setItem('gam_' + id, e.target.value);
+    });
+  });
+
+  // Enter key triggers fetch
+  document.querySelectorAll('input').forEach(inp => {
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') fetchWorkflow(); });
+  });
+</script>
+</body>
+</html>
