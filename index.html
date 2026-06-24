@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>All-In-One Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.33.0/dist/tabler-icons.min.css">
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:#0F172A;--surf:#1E293B;--surf2:#334155;--border:#334155;
+      --green:#22C55E;--red:#EF4444;--yellow:#EAB308;
+      --text:#F8FAFC;--muted:#94A3B8;--dim:#475569;--r:10px;
+    }
+    body{font-family:'Space Mono',monospace;background:var(--bg);color:var(--text);height:100vh;overflow:hidden;display:flex}
+    ::-webkit-scrollbar{width:4px}
+    ::-webkit-scrollbar-thumb{background:var(--surf2);border-radius:2px}
+
+    /* ── Sidebar ── */
+    #sidebar{width:56px;background:#080E1C;border-right:1px solid #0F172A;display:flex;flex-direction:column;align-items:center;padding:12px 0;gap:4px;flex-shrink:0}
+    .s-logo{width:32px;height:32px;background:var(--green);border-radius:8px;display:flex;align-items:center;justify-content:center;margin-bottom:12px;flex-shrink:0}
+    .s-logo i{font-size:18px;color:#0F172A}
+    #site-list{display:flex;flex-direction:column;align-items:center;gap:4px;width:100%}
+    .site-btn{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;background:transparent;color:var(--dim);font-size:18px;transition:background 150ms,color 150ms;position:relative}
+    .site-btn:hover{background:var(--surf);color:var(--text)}
+    .site-btn[data-tip]:hover::after{content:attr(data-tip);position:absolute;left:calc(100% + 10px);top:50%;transform:translateY(-50%);background:var(--surf2);color:var(--text);font-size:0.65rem;padding:4px 8px;border-radius:6px;white-space:nowrap;pointer-events:none;z-index:50;font-family:'Space Mono',monospace}
+    .s-add{margin-top:auto;width:32px;height:32px;border-radius:8px;border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;background:transparent;color:var(--dim);font-size:16px;transition:border-color 150ms,color 150ms;flex-shrink:0}
+    .s-add:hover{border-color:var(--muted);color:var(--text)}
+
+    /* ── Main ── */
+    #main{flex:1;overflow-y:auto;padding:20px 24px;min-width:0}
+    .m-header{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+    .m-header h1{font-size:1rem;font-weight:700}
+    .m-actions{margin-left:auto;display:flex;gap:8px;align-items:center}
+    .icon-btn{width:32px;height:32px;border-radius:var(--r);border:0.5px solid var(--border);background:transparent;color:var(--muted);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;transition:background 150ms,color 150ms}
+    .icon-btn:hover{background:var(--surf);color:var(--text)}
+    .btn-primary{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:var(--r);border:none;background:var(--green);color:#0F172A;font-family:'Space Mono',monospace;font-size:0.75rem;font-weight:700;cursor:pointer;transition:opacity 150ms}
+    .btn-primary:hover{opacity:0.85}
+
+    /* ── Card grid ── */
+    .card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+    .card{background:var(--surf);border:0.5px solid var(--border);border-radius:var(--r);padding:14px;position:relative;transition:border-color 200ms}
+    .card:hover{border-color:var(--surf2)}
+    .card:hover .c-gear{opacity:1}
+    .c-gear{position:absolute;top:10px;right:10px;width:24px;height:24px;border-radius:6px;border:none;background:transparent;color:var(--dim);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;opacity:0;transition:opacity 150ms,background 150ms}
+    .c-gear:hover{background:var(--surf2);color:var(--text)}
+    .c-label{font-size:0.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;padding-right:24px}
+    .c-status{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+    .sdot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+    .dg{background:var(--green)}.dr{background:var(--red)}.dy{background:var(--yellow)}.dm{background:var(--muted)}
+    .c-val{font-size:1rem;font-weight:700}
+    .vg{color:var(--green)}.vr{color:var(--red)}.vy{color:var(--yellow)}
+    .c-meta{font-size:0.65rem;color:var(--muted);line-height:1.7}
+    .c-meta a{color:var(--muted)}
+    .c-err{font-size:0.68rem;color:var(--red);line-height:1.5}
+    .c-loading{font-size:0.72rem;color:var(--dim)}
+    .card-add{background:transparent;border:1px dashed var(--border);border-radius:var(--r);padding:14px;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;color:var(--dim);font-family:'Space Mono',monospace;font-size:0.72rem;transition:border-color 150ms,color 150ms;min-height:90px}
+    .card-add:hover{border-color:var(--muted);color:var(--text)}
+    .lc{font-size:0.6rem;color:var(--surf2);margin-top:14px;text-align:center}
+
+    /* ── No site ── */
+    #no-site{display:flex;align-items:center;justify-content:center;height:calc(100vh - 40px);flex-direction:column;gap:14px;color:var(--dim);text-align:center}
+    #no-site i{font-size:48px;color:var(--surf)}
+
+    /* ── Drawer ── */
+    #drawer{width:0;overflow:hidden;background:var(--surf);border-left:1px solid var(--border);transition:width 240ms ease;flex-shrink:0;display:flex;flex-direction:column}
+    #drawer.open{width:290px}
+    .d-inner{width:290px;padding:18px;height:100%;overflow-y:auto;display:flex;flex-direction:column}
+    .d-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+    .d-title{font-size:0.85rem;font-weight:700}
+
+    /* ── Forms ── */
+    .field{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
+    label{font-size:0.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+    input,select,textarea{background:var(--bg);border:0.5px solid var(--border);border-radius:8px;color:var(--text);font-family:'Space Mono',monospace;font-size:0.78rem;padding:8px 10px;outline:none;transition:border-color 150ms;width:100%}
+    input:focus,select:focus{border-color:var(--green)}
+    select option{background:var(--surf)}
+    .btn-save{background:var(--green);border:none;border-radius:8px;color:#0F172A;font-family:'Space Mono',monospace;font-size:0.78rem;font-weight:700;padding:9px;cursor:pointer;width:100%;margin-top:4px;transition:opacity 150ms}
+    .btn-save:hover{opacity:0.85}
+    .btn-del{background:transparent;border:0.5px solid rgba(239,68,68,.3);border-radius:8px;color:var(--red);font-family:'Space Mono',monospace;font-size:0.72rem;padding:8px;cursor:pointer;width:100%;margin-top:8px;transition:background 150ms}
+    .btn-del:hover{background:rgba(239,68,68,.1)}
+
+    /* ── Modal ── */
+    .overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);display:none;align-items:center;justify-content:center;z-index:100}
+    .overlay.open{display:flex}
+    .modal{background:var(--surf);border:0.5px solid var(--border);border-radius:var(--r);padding:20px;width:340px;max-width:90vw;max-height:90vh;overflow-y:auto}
+    .m-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+    .m-title{font-size:0.9rem;font-weight:700}
+
+    /* ── Icon grid ── */
+    .icon-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-top:4px}
+    .io{width:36px;height:36px;border-radius:8px;border:0.5px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--dim);font-size:18px;transition:all 150ms}
+    .io:hover,.io.sel{background:var(--surf2);color:var(--text);border-color:var(--muted)}
+
+    /* ── Color swatches ── */
+    .swatches{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+    .sw{width:26px;height:26px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:border-color 150ms}
+    .sw.sel{border-color:white}
+
+    /* ── Spinner ── */
+    .spin{display:inline-block;width:12px;height:12px;border:2px solid rgba(248,250,252,.12);border-top-color:var(--muted);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    @media(prefers-reduced-motion:reduce){.spin{animation:none}*{transition:none!important}}
+  </style>
+</head>
+<body>
+
+<aside id="sidebar">
+  <div class="s-logo"><i class="ti ti-layout-dashboard" aria-hidden="true"></i></div>
+  <div id="site-list"></div>
+  <button class="s-add" onclick="openAddSite()" aria-label="Add site" title="Add site">
+    <i class="ti ti-plus" aria-hidden="true"></i>
+  </button>
+</aside>
+
+<main id="main">
+  <div id="no-site">
+    <i class="ti ti-layout-dashboard" aria-hidden="true"></i>
+    <p style="font-size:.85rem">No sites yet</p>
+    <button class="btn-primary" onclick="openAddSite()">
+      <i class="ti ti-plus" aria-hidden="true"></i> Add first site
+    </button>
+  </div>
+  <div id="site-content" style="display:none">
+    <div class="m-header">
+      <h1 id="site-title"></h1>
+      <div class="m-actions">
+        <button class="icon-btn" onclick="refreshSite()" aria-label="Refresh" title="Refresh">
+          <i class="ti ti-refresh" aria-hidden="true"></i>
+        </button>
+        <button class="btn-primary" onclick="openAddCard()">
+          <i class="ti ti-plus" aria-hidden="true"></i> Add card
+        </button>
+      </div>
+    </div>
+    <div class="card-grid" id="card-grid"></div>
+    <div class="lc" id="last-checked"></div>
+  </div>
+</main>
+
+<div id="drawer">
+  <div class="d-inner">
+    <div class="d-hdr">
+      <span class="d-title" id="d-title">Card config</span>
+      <button class="icon-btn" onclick="closeDrawer()" aria-label="Close"><i class="ti ti-x" aria-hidden="true"></i></button>
+    </div>
+    <div id="d-body"></div>
+  </div>
+</div>
+
+<!-- Modal: Add site -->
+<div class="overlay" id="modal-site" role="dialog" aria-modal="true">
+  <div class="modal">
+    <div class="m-hdr">
+      <span class="m-title">New site</span>
+      <button class="icon-btn" onclick="closeModal('modal-site')" aria-label="Close"><i class="ti ti-x" aria-hidden="true"></i></button>
+    </div>
+    <div class="field">
+      <label for="s-name">Name</label>
+      <input id="s-name" type="text" placeholder="Casa de Pizza" autocomplete="off">
+    </div>
+    <div class="field">
+      <label>Icon</label>
+      <div class="icon-grid" id="icon-grid"></div>
+    </div>
+    <div class="field">
+      <label>Color</label>
+      <div class="swatches" id="color-swatches"></div>
+    </div>
+    <button class="btn-save" onclick="saveSite()">Add site</button>
+  </div>
+</div>
+
+<!-- Modal: Add card -->
+<div class="overlay" id="modal-card" role="dialog" aria-modal="true">
+  <div class="modal">
+    <div class="m-hdr">
+      <span class="m-title">New card</span>
+      <button class="icon-btn" onclick="closeModal('modal-card')" aria-label="Close"><i class="ti ti-x" aria-hidden="true"></i></button>
+    </div>
+    <div class="field">
+      <label for="nc-title">Title</label>
+      <input id="nc-title" type="text" placeholder="Lunch Special" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="nc-type">Type</label>
+      <select id="nc-type" onchange="renderTypeFields('nc-fields',this.value)">
+        <option value="lunch-special">Lunch Special (WP endpoint)</option>
+        <option value="github-actions">GitHub Actions</option>
+        <option value="healthcheck">Healthchecks.io</option>
+        <option value="woo-sales">WooCommerce Sales</option>
+        <option value="http-ping">HTTP Status</option>
+      </select>
+    </div>
+    <div id="nc-fields"></div>
+    <button class="btn-save" onclick="saveCard()">Add card</button>
+  </div>
+</div>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+let S = { sites: [], active: null };
+let editId = null;
+let pickIcon = 'ti-globe';
+let pickColor = '#22C55E';
+
+const ICONS = ['ti-pizza','ti-globe','ti-shopping-cart','ti-server','ti-brand-github',
+  'ti-database','ti-device-laptop','ti-chart-bar','ti-building','ti-rocket',
+  'ti-leaf','ti-clock','ti-mail','ti-bell','ti-home'];
+const COLORS = ['#22C55E','#3B82F6','#EAB308','#EF4444','#A855F7','#F97316','#06B6D4','#EC4899'];
+const TZ = 'America/Los_Angeles';
+
+// ── Persistence ───────────────────────────────────────────────────────────────
+const persist = () => localStorage.setItem('aio2', JSON.stringify(S));
+function loadState() {
+  try { const s = localStorage.getItem('aio2'); if (s) S = JSON.parse(s); } catch {}
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+const uid = () => '_' + Math.random().toString(36).slice(2,9);
+const esc = s => String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const activeSite = () => S.sites.find(s => s.id === S.active);
+
+function fmtTime(iso) {
+  if (!iso) return '—';
+  try { return new Date(iso).toLocaleString('en-US',{timeZone:TZ,month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:true}); }
+  catch { return iso; }
+}
+function cdwn(iso) {
+  if (!iso) return '';
+  const d = Math.round((new Date(iso) - Date.now())/1000);
+  if (d < 0) return '(overdue)';
+  const h = Math.floor(d/3600), m = Math.floor((d%3600)/60);
+  return h > 0 ? `in ${h}h ${m}m` : `in ${m}m`;
+}
+function hexRgb(hex) {
+  return [parseInt(hex.slice(1,3),16),parseInt(hex.slice(3,5),16),parseInt(hex.slice(5,7),16)].join(',');
+}
+
+// ── Sidebar ───────────────────────────────────────────────────────────────────
+function renderSidebar() {
+  document.getElementById('site-list').innerHTML = S.sites.map(site => {
+    const active = site.id === S.active;
+    const style = active
+      ? `color:${site.color};background:rgba(${hexRgb(site.color)},.15);border-radius:8px`
+      : '';
+    return `<button class="site-btn" onclick="selectSite('${site.id}')"
+      data-tip="${esc(site.name)}" aria-label="${esc(site.name)}"
+      style="${style}">
+      <i class="ti ${site.icon}" aria-hidden="true"></i>
+    </button>`;
+  }).join('');
+}
+
+// ── Select / render site ──────────────────────────────────────────────────────
+function selectSite(id) {
+  S.active = id;
+  persist();
+  renderSidebar();
+  renderMain();
+  loadAll();
+}
+
+function renderMain() {
+  const site = activeSite();
+  document.getElementById('no-site').style.display    = site ? 'none' : 'flex';
+  document.getElementById('site-content').style.display = site ? 'block' : 'none';
+  if (!site) return;
+  document.getElementById('site-title').textContent = site.name;
+  renderGrid(site);
+}
+
+function renderGrid(site) {
+  const cards = site.cards || [];
+  document.getElementById('card-grid').innerHTML =
+    cards.map(c => `
+      <div class="card" id="c-${c.id}">
+        <button class="c-gear" onclick="openEdit('${c.id}')" aria-label="Configure ${esc(c.title)}">
+          <i class="ti ti-settings" aria-hidden="true"></i>
+        </button>
+        <div class="c-label">${esc(c.title)}</div>
+        <div class="c-loading"><span class="spin"></span> Loading…</div>
+      </div>`).join('') +
+    `<button class="card-add" onclick="openAddCard()" aria-label="Add card">
+      <i class="ti ti-plus" aria-hidden="true"></i> Add card
+    </button>`;
+}
+
+async function loadAll() {
+  const site = activeSite();
+  if (!site) return;
+  await Promise.allSettled((site.cards||[]).map(c => loadCard(c)));
+  const now = new Date().toLocaleString('en-US',{timeZone:TZ,hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:true});
+  const el = document.getElementById('last-checked');
+  if (el) el.textContent = `Checked ${now} PT`;
+}
+
+async function loadCard(card) {
+  const el = document.getElementById('c-' + card.id);
+  if (!el) return;
+  const gear  = el.querySelector('.c-gear').outerHTML;
+  const label = el.querySelector('.c-label').outerHTML;
+  try {
+    const html = await fetchCard(card);
+    el.innerHTML = gear + label + html;
+  } catch(e) {
+    el.innerHTML = gear + label + `<div class="c-err">${esc(e.message)}</div>`;
+  }
+}
+
+function refreshSite() { loadAll(); }
+
+// ── Fetchers ──────────────────────────────────────────────────────────────────
+async function fetchCard(card) {
+  const { type, config: c } = card;
+  if (type === 'lunch-special')  return fetchLunch(c);
+  if (type === 'github-actions') return fetchGitHub(c);
+  if (type === 'healthcheck')    return fetchHC(c);
+  if (type === 'woo-sales')      return fetchWoo(c);
+  if (type === 'http-ping')      return fetchPing(c);
+  return '<div class="c-err">Unknown type</div>';
+}
+
+async function fetchLunch(c) {
+  const url = `${c.wpUrl.replace(/\/$/,'')}/wp-json/casa/v1/lunch-status?key=${encodeURIComponent(c.monitorKey)}`;
+  const res = await fetch(url);
+  if (!res.ok) { const d = await res.json().catch(()=>({})); throw new Error(d.message || `HTTP ${res.status}`); }
+  const d = await res.json();
+  const on = d.lunch_active;
+  const nxt = on ? d.cron?.next_deactivate : d.cron?.next_activate;
+  const nxtLbl = on ? 'Ends' : 'Starts';
+  const cronOk = d.cron?.activate_set && d.cron?.deactivate_set;
+  return `
+    <div class="c-status">
+      <div class="sdot ${on?'dg':'dr'}"></div>
+      <div class="c-val ${on?'vg':'vr'}">${on?'ACTIVE':'INACTIVE'}</div>
+    </div>
+    <div class="c-meta">
+      ${d.visible_count}/${d.total} products visible<br>
+      ${nxtLbl}: ${fmtTime(nxt)} ${cdwn(nxt)}<br>
+      WP Cron: ${cronOk?'✓ set':'⚠ missing'}
+    </div>`;
+}
+
+async function fetchGitHub(c) {
+  const hdrs = {'Accept':'application/vnd.github+json'};
+  if (c.token) hdrs['Authorization'] = `Bearer ${c.token}`;
+  const url = `https://api.github.com/repos/${encodeURIComponent(c.owner)}/${encodeURIComponent(c.repo)}/actions/workflows/${encodeURIComponent(c.workflow)}/runs?per_page=1`;
+  const res = await fetch(url,{headers:hdrs});
+  if (!res.ok) { const d = await res.json().catch(()=>({})); throw new Error(d.message || `HTTP ${res.status}`); }
+  const d = await res.json();
+  const run = (d.workflow_runs||[])[0];
+  if (!run) return '<div class="c-meta">No runs found</div>';
+  const s = run.conclusion || run.status || 'unknown';
+  const dc = s==='success'?'dg':s==='failure'||s==='cancelled'?'dr':'dy';
+  const vc = s==='success'?'vg':s==='failure'||s==='cancelled'?'vr':'vy';
+  return `
+    <div class="c-status">
+      <div class="sdot ${dc}"></div>
+      <div class="c-val ${vc}">${s.replace(/_/g,' ').toUpperCase()}</div>
+    </div>
+    <div class="c-meta">
+      #${run.run_number} · ${esc(run.head_branch||'')}<br>
+      ${fmtTime(run.run_started_at||run.created_at)}<br>
+      <a href="${esc(run.html_url)}" target="_blank" rel="noopener">View logs →</a>
+    </div>`;
+}
+
+async function fetchHC(c) {
+  const res = await fetch('https://healthchecks.io/api/v3/checks/',{headers:{'X-Api-Key':c.apiKey}});
+  if (!res.ok) throw new Error(`HC HTTP ${res.status}`);
+  const d = await res.json();
+  let checks = (d.checks||[]);
+  if (c.filter) checks = checks.filter(x => x.name.toLowerCase().includes(c.filter.toLowerCase()));
+  if (!checks.length) return '<div class="c-meta">No checks found</div>';
+  return checks.map(x => {
+    const dc = x.status==='up'?'dg':x.status==='down'?'dr':'dy';
+    const vc = x.status==='up'?'vg':x.status==='down'?'vr':'vy';
+    return `<div class="c-status" style="margin-bottom:3px">
+      <div class="sdot ${dc}"></div>
+      <span style="font-size:.72rem;flex:1;color:var(--text)">${esc(x.name)}</span>
+      <span class="c-val ${vc}" style="font-size:.72rem">${x.status.toUpperCase()}</span>
+    </div>
+    <div class="c-meta" style="margin-bottom:6px">Last: ${fmtTime(x.last_ping)}</div>`;
+  }).join('');
+}
+
+async function fetchWoo(c) {
+  const today = new Date().toISOString().split('T')[0];
+  const url = `${c.wpUrl.replace(/\/$/,'')}/wp-json/wc/v3/orders?after=${today}T00:00:00&per_page=100&status=processing,completed`;
+  const res = await fetch(url,{headers:{Authorization:'Basic '+btoa(`${c.ck}:${c.cs}`)}});
+  if (!res.ok) { const d = await res.json().catch(()=>({})); throw new Error(d.message || `HTTP ${res.status}`); }
+  const orders = await res.json();
+  const total = orders.reduce((s,o) => s + parseFloat(o.total||0), 0);
+  return `
+    <div class="c-status">
+      <div class="sdot dg"></div>
+      <div class="c-val vg">$${total.toFixed(2)}</div>
+    </div>
+    <div class="c-meta">${orders.length} orders today</div>`;
+}
+
+async function fetchPing(c) {
+  const t = Date.now();
+  try {
+    await fetch(c.url,{method:'HEAD',mode:'no-cors',cache:'no-store'});
+    return `<div class="c-status"><div class="sdot dg"></div><div class="c-val vg">ONLINE</div></div>
+      <div class="c-meta">${Date.now()-t}ms</div>`;
+  } catch {
+    return `<div class="c-status"><div class="sdot dr"></div><div class="c-val vr">OFFLINE</div></div>
+      <div class="c-meta">${esc(c.url)}</div>`;
+  }
+}
+
+// ── Type fields ───────────────────────────────────────────────────────────────
+const TYPE_FIELDS = {
+  'lunch-special': [
+    {id:'wpUrl',label:'WordPress URL',ph:'https://casadepizzawings.net',type:'url'},
+    {id:'monitorKey',label:'Monitor API Key',ph:'secret-key',type:'password'},
+  ],
+  'github-actions': [
+    {id:'owner',label:'Owner',ph:'octocat'},
+    {id:'repo',label:'Repository',ph:'hello-world'},
+    {id:'workflow',label:'Workflow file',ph:'ci.yml'},
+    {id:'token',label:'GitHub Token (optional)',ph:'ghp_...',type:'password'},
+  ],
+  'healthcheck': [
+    {id:'apiKey',label:'Read-Only API Key',ph:'hc_ro_...',type:'password'},
+    {id:'filter',label:'Name filter (optional)',ph:'casa'},
+  ],
+  'woo-sales': [
+    {id:'wpUrl',label:'WordPress URL',ph:'https://example.com',type:'url'},
+    {id:'ck',label:'Consumer Key',ph:'ck_...',type:'password'},
+    {id:'cs',label:'Consumer Secret',ph:'cs_...',type:'password'},
+  ],
+  'http-ping': [
+    {id:'url',label:'URL',ph:'https://example.com',type:'url'},
+  ],
+};
+
+function renderTypeFields(containerId, type, existing = {}) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  el.innerHTML = (TYPE_FIELDS[type]||[]).map(f => `
+    <div class="field">
+      <label for="${containerId}-${f.id}">${f.label}</label>
+      <input id="${containerId}-${f.id}" type="${f.type||'text'}" placeholder="${f.ph}" value="${esc(existing[f.id]||'')}" autocomplete="off">
+    </div>`).join('');
+}
+
+function getFields(containerId, type) {
+  const g = id => document.getElementById(`${containerId}-${id}`)?.value?.trim() || '';
+  const out = {};
+  (TYPE_FIELDS[type]||[]).forEach(f => out[f.id] = g(f.id));
+  return out;
+}
+
+// ── Drawer (edit card) ────────────────────────────────────────────────────────
+function openEdit(cardId) {
+  editId = cardId;
+  const site = activeSite();
+  const card = site.cards.find(c => c.id === cardId);
+  if (!card) return;
+  document.getElementById('d-title').textContent = card.title;
+  document.getElementById('d-body').innerHTML = `
+    <div class="field">
+      <label for="e-title">Title</label>
+      <input id="e-title" type="text" value="${esc(card.title)}" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="e-type">Type</label>
+      <select id="e-type" onchange="renderTypeFields('e-fields',this.value)">
+        <option value="lunch-special" ${card.type==='lunch-special'?'selected':''}>Lunch Special (WP endpoint)</option>
+        <option value="github-actions" ${card.type==='github-actions'?'selected':''}>GitHub Actions</option>
+        <option value="healthcheck" ${card.type==='healthcheck'?'selected':''}>Healthchecks.io</option>
+        <option value="woo-sales" ${card.type==='woo-sales'?'selected':''}>WooCommerce Sales</option>
+        <option value="http-ping" ${card.type==='http-ping'?'selected':''}>HTTP Status</option>
+      </select>
+    </div>
+    <div id="e-fields"></div>
+    <button class="btn-save" onclick="updateCard()">Save</button>
+    <button class="btn-del" onclick="deleteCard('${cardId}')">Delete card</button>`;
+  renderTypeFields('e-fields', card.type, card.config);
+  document.getElementById('drawer').classList.add('open');
+}
+
+function closeDrawer() {
+  document.getElementById('drawer').classList.remove('open');
+  editId = null;
+}
+
+function updateCard() {
+  const site = activeSite();
+  const card = site.cards.find(c => c.id === editId);
+  if (!card) return;
+  card.title  = document.getElementById('e-title').value.trim() || card.title;
+  card.type   = document.getElementById('e-type').value;
+  card.config = getFields('e-fields', card.type);
+  persist();
+  closeDrawer();
+  renderGrid(site);
+  loadCard(card);
+}
+
+function deleteCard(cardId) {
+  if (!confirm('Delete this card?')) return;
+  const site = activeSite();
+  site.cards = site.cards.filter(c => c.id !== cardId);
+  persist();
+  closeDrawer();
+  renderGrid(site);
+}
+
+// ── Add card ──────────────────────────────────────────────────────────────────
+function openAddCard() {
+  document.getElementById('nc-title').value = '';
+  document.getElementById('nc-type').value = 'lunch-special';
+  renderTypeFields('nc-fields','lunch-special');
+  document.getElementById('modal-card').classList.add('open');
+}
+
+function saveCard() {
+  const title = document.getElementById('nc-title').value.trim();
+  const type  = document.getElementById('nc-type').value;
+  if (!title) { document.getElementById('nc-title').focus(); return; }
+  const config = getFields('nc-fields', type);
+  const site = activeSite();
+  if (!site) return;
+  const card = { id: uid(), title, type, config };
+  site.cards = site.cards || [];
+  site.cards.push(card);
+  persist();
+  closeModal('modal-card');
+  renderGrid(site);
+  loadCard(card);
+}
+
+// ── Add site ──────────────────────────────────────────────────────────────────
+function openAddSite() {
+  pickIcon = 'ti-globe'; pickColor = '#22C55E';
+  document.getElementById('s-name').value = '';
+  document.getElementById('icon-grid').innerHTML = ICONS.map(ic =>
+    `<div class="io ${ic===pickIcon?'sel':''}" onclick="selIcon('${ic}')"><i class="ti ${ic}" aria-hidden="true"></i></div>`
+  ).join('');
+  document.getElementById('color-swatches').innerHTML = COLORS.map(c =>
+    `<div class="sw ${c===pickColor?'sel':''}" style="background:${c}" onclick="selColor('${c}')" aria-label="${c}"></div>`
+  ).join('');
+  document.getElementById('modal-site').classList.add('open');
+  setTimeout(() => document.getElementById('s-name').focus(), 50);
+}
+
+function selIcon(ic) {
+  pickIcon = ic;
+  document.querySelectorAll('#icon-grid .io').forEach(el => el.classList.remove('sel'));
+  event.currentTarget.classList.add('sel');
+}
+function selColor(c) {
+  pickColor = c;
+  document.querySelectorAll('#color-swatches .sw').forEach(el => el.classList.remove('sel'));
+  event.currentTarget.classList.add('sel');
+}
+
+function saveSite() {
+  const name = document.getElementById('s-name').value.trim();
+  if (!name) { document.getElementById('s-name').focus(); return; }
+  const site = { id: uid(), name, icon: pickIcon, color: pickColor, cards: [] };
+  S.sites.push(site);
+  persist();
+  closeModal('modal-site');
+  renderSidebar();
+  selectSite(site.id);
+}
+
+// ── Modals ────────────────────────────────────────────────────────────────────
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+document.querySelectorAll('.overlay').forEach(el =>
+  el.addEventListener('click', e => { if (e.target === el) closeModal(el.id); })
+);
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.overlay.open').forEach(m => closeModal(m.id));
+    closeDrawer();
+  }
+});
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+loadState();
+renderSidebar();
+if (S.active && S.sites.find(s => s.id === S.active)) {
+  renderMain(); loadAll();
+} else if (S.sites.length > 0) {
+  selectSite(S.sites[0].id);
+} else {
+  renderMain();
+}
+renderTypeFields('nc-fields','lunch-special');
+</script>
+</body>
+</html>
