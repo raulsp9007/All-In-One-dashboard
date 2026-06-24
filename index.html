@@ -203,6 +203,7 @@
 // ── State ─────────────────────────────────────────────────────────────────────
 let S = { sites: [], active: null };
 let editId = null;
+const timers = new Map();
 let pickIcon = 'ti-globe';
 let pickColor = '#22C55E';
 
@@ -302,15 +303,38 @@ async function loadCard(card) {
   if (!el) return;
   const gear  = el.querySelector('.c-gear').outerHTML;
   const label = el.querySelector('.c-label').outerHTML;
+  const badge = (() => {
+    const lbl = intervalLabel(card.config?.interval);
+    return lbl ? `<div style="margin-top:7px;font-size:0.58rem;color:var(--dim)">${lbl}</div>` : '';
+  })();
   try {
     const html = await fetchCard(card);
-    el.innerHTML = gear + label + html;
+    el.innerHTML = gear + label + html + badge;
   } catch(e) {
-    el.innerHTML = gear + label + `<div class="c-err">${esc(e.message)}</div>`;
+    el.innerHTML = gear + label + `<div class="c-err">${esc(e.message)}</div>` + badge;
   }
 }
 
 function refreshSite() { loadAll(); }
+
+// ── Auto-refresh timers ───────────────────────────────────────────────────────
+function scheduleCard(card) {
+  clearCardTimer(card.id);
+  const secs = parseInt(card.config?.interval) || 0;
+  if (secs > 0) {
+    timers.set(card.id, setInterval(() => loadCard(card), secs * 1000));
+  }
+}
+function clearCardTimer(id) {
+  if (timers.has(id)) { clearInterval(timers.get(id)); timers.delete(id); }
+}
+function intervalLabel(secs) {
+  secs = parseInt(secs) || 0;
+  if (!secs) return '';
+  if (secs < 60)   return `auto ${secs}s`;
+  if (secs < 3600) return `auto ${secs/60}m`;
+  return `auto ${secs/3600}h`;
+}
 
 // ── Fetchers ──────────────────────────────────────────────────────────────────
 async function fetchCard(card) {
@@ -458,20 +482,40 @@ const TYPE_FIELDS = {
   ],
 };
 
+const INTERVAL_OPTIONS = [
+  {v:'0',    l:'Manual only'},
+  {v:'30',   l:'Every 30s'},
+  {v:'60',   l:'Every 1 min'},
+  {v:'300',  l:'Every 5 min'},
+  {v:'900',  l:'Every 15 min'},
+  {v:'1800', l:'Every 30 min'},
+  {v:'3600', l:'Every 1 hour'},
+];
+
 function renderTypeFields(containerId, type, existing = {}) {
   const el = document.getElementById(containerId);
   if (!el) return;
-  el.innerHTML = (TYPE_FIELDS[type]||[]).map(f => `
+  const typeHtml = (TYPE_FIELDS[type]||[]).map(f => `
     <div class="field">
       <label for="${containerId}-${f.id}">${f.label}</label>
       <input id="${containerId}-${f.id}" type="${f.type||'text'}" placeholder="${f.ph}" value="${esc(existing[f.id]||'')}" autocomplete="off">
     </div>`).join('');
+  const cur = String(existing.interval || '0');
+  const intervalHtml = `
+    <div class="field">
+      <label for="${containerId}-interval">Auto-refresh</label>
+      <select id="${containerId}-interval">
+        ${INTERVAL_OPTIONS.map(o => `<option value="${o.v}" ${cur===o.v?'selected':''}>${o.l}</option>`).join('')}
+      </select>
+    </div>`;
+  el.innerHTML = typeHtml + intervalHtml;
 }
 
 function getFields(containerId, type) {
   const g = id => document.getElementById(`${containerId}-${id}`)?.value?.trim() || '';
   const out = {};
   (TYPE_FIELDS[type]||[]).forEach(f => out[f.id] = g(f.id));
+  out.interval = parseInt(g('interval')) || 0;
   return out;
 }
 
@@ -513,6 +557,7 @@ function updateCard() {
   const site = activeSite();
   const card = site.cards.find(c => c.id === editId);
   if (!card) return;
+  clearCardTimer(card.id);
   card.title  = document.getElementById('e-title').value.trim() || card.title;
   card.type   = document.getElementById('e-type').value;
   card.config = getFields('e-fields', card.type);
@@ -520,10 +565,12 @@ function updateCard() {
   closeDrawer();
   renderGrid(site);
   loadCard(card);
+  scheduleCard(card);
 }
 
 function deleteCard(cardId) {
   if (!confirm('Delete this card?')) return;
+  clearCardTimer(cardId);
   const site = activeSite();
   site.cards = site.cards.filter(c => c.id !== cardId);
   persist();
@@ -553,6 +600,7 @@ function saveCard() {
   closeModal('modal-card');
   renderGrid(site);
   loadCard(card);
+  scheduleCard(card);
 }
 
 // ── Add site ──────────────────────────────────────────────────────────────────
@@ -609,6 +657,7 @@ loadState();
 renderSidebar();
 if (S.active && S.sites.find(s => s.id === S.active)) {
   renderMain(); loadAll();
+  activeSite()?.cards?.forEach(scheduleCard);
 } else if (S.sites.length > 0) {
   selectSite(S.sites[0].id);
 } else {
