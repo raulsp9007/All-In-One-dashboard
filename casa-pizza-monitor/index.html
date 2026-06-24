@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Casa de Pizza — Automation Monitor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Karla:wght@400;500;600;700&family=Playfair+Display+SC:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0F172A;
+      --surface:  #1E293B;
+      --surface2: #334155;
+      --green:    #22C55E;
+      --red:      #EF4444;
+      --yellow:   #EAB308;
+      --blue:     #3B82F6;
+      --text:     #F8FAFC;
+      --muted:    #94A3B8;
+      --border:   #334155;
+      --r:        10px;
+    }
+
+    body {
+      font-family: 'Karla', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 1.5rem 1rem 3rem;
+    }
+
+    .container { max-width: 960px; margin: 0 auto; }
+
+    /* ── Header ── */
+    header { text-align: center; margin-bottom: 2rem; }
+    header h1 {
+      font-family: 'Playfair Display SC', serif;
+      font-size: 1.6rem;
+      letter-spacing: 0.04em;
+    }
+    header p { color: var(--muted); font-size: 0.85rem; margin-top: 4px; }
+
+    /* ── Config ── */
+    .config {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 1.25rem;
+      margin-bottom: 1.5rem;
+    }
+    .config-title {
+      font-size: 0.65rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      margin-bottom: 1rem;
+    }
+    .config-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+    }
+    @media (max-width: 580px) { .config-grid { grid-template-columns: 1fr; } }
+    .field { display: flex; flex-direction: column; gap: 4px; }
+    .field.full { grid-column: 1/-1; }
+    label { font-size: 0.68rem; color: var(--muted); }
+    input {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      color: var(--text);
+      font-family: 'Karla', sans-serif;
+      font-size: 0.82rem;
+      padding: 0.5rem 0.75rem;
+      outline: none;
+      transition: border-color 200ms;
+    }
+    input:focus { border-color: var(--green); }
+    input::placeholder { color: var(--surface2); }
+
+    .btn-row { display: flex; gap: 0.75rem; align-items: center; margin-top: 0.75rem; flex-wrap: wrap; }
+    .btn {
+      background: var(--green);
+      border: none;
+      border-radius: var(--r);
+      color: #0F172A;
+      cursor: pointer;
+      font-family: 'Karla', sans-serif;
+      font-size: 0.82rem;
+      font-weight: 700;
+      padding: 0.6rem 1.25rem;
+      transition: opacity 200ms, transform 150ms;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+    }
+    .btn:hover { opacity: 0.87; }
+    .btn:active { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+    .auto-label { font-size: 0.7rem; color: var(--muted); display: flex; align-items: center; gap: 0.4rem; cursor: pointer; }
+    .auto-label input[type=checkbox] { width: 14px; height: 14px; cursor: pointer; }
+
+    /* ── Alert ── */
+    .alert {
+      background: rgba(239,68,68,0.1);
+      border: 1px solid rgba(239,68,68,0.3);
+      border-radius: var(--r);
+      color: var(--red);
+      font-size: 0.8rem;
+      padding: 0.8rem 1rem;
+      margin-bottom: 1.25rem;
+      display: none;
+    }
+    .alert.visible { display: block; }
+
+    /* ── Grid de paneles ── */
+    .panels {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+    @media (max-width: 680px) { .panels { grid-template-columns: 1fr; } }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 1.25rem;
+      display: none;
+    }
+    .panel.visible { display: block; }
+    .panel.full-width { grid-column: 1/-1; }
+
+    .panel-label {
+      font-size: 0.62rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      margin-bottom: 0.9rem;
+    }
+
+    /* ── Big status ── */
+    .big-status {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+    .status-dot {
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .dot-green  { background: var(--green); box-shadow: 0 0 10px var(--green); }
+    .dot-red    { background: var(--red);   box-shadow: 0 0 10px var(--red); }
+    .dot-yellow { background: var(--yellow);box-shadow: 0 0 10px var(--yellow); }
+    .dot-gray   { background: var(--muted); }
+
+    .status-text { font-size: 1.1rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+    .text-green  { color: var(--green); }
+    .text-red    { color: var(--red); }
+    .text-yellow { color: var(--yellow); }
+    .text-muted  { color: var(--muted); }
+
+    /* ── Meta items ── */
+    .meta-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.6rem;
+    }
+    .meta-item { display: flex; flex-direction: column; gap: 2px; }
+    .meta-label { font-size: 0.62rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+    .meta-value { font-size: 0.82rem; }
+
+    /* ── Products mini-grid ── */
+    .products-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.4rem;
+      margin-top: 0.75rem;
+    }
+    @media (max-width: 680px) { .products-grid { grid-template-columns: repeat(4, 1fr); } }
+    .prod-dot {
+      height: 28px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.6rem;
+      font-weight: 600;
+      cursor: default;
+      transition: opacity 200ms;
+    }
+    .prod-dot.active   { background: rgba(34,197,94,0.2);  color: var(--green); border: 1px solid rgba(34,197,94,0.4); }
+    .prod-dot.inactive { background: rgba(239,68,68,0.1);  color: var(--red);   border: 1px solid rgba(239,68,68,0.3); }
+    .prod-dot.unknown  { background: var(--surface2);       color: var(--muted); }
+
+    /* ── Cron rows ── */
+    .cron-row {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.55rem 0;
+      border-bottom: 1px solid rgba(51,65,85,0.5);
+      font-size: 0.8rem;
+    }
+    .cron-row:last-child { border-bottom: none; }
+    .cron-badge {
+      font-size: 0.6rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 2px 6px;
+      border-radius: 4px;
+      flex-shrink: 0;
+    }
+    .badge-green  { background: rgba(34,197,94,0.15);  color: var(--green); }
+    .badge-red    { background: rgba(239,68,68,0.15);  color: var(--red); }
+    .badge-yellow { background: rgba(234,179,8,0.15);  color: var(--yellow); }
+    .cron-time { color: var(--muted); font-size: 0.74rem; margin-left: auto; }
+    .cron-countdown { font-size: 0.68rem; color: var(--surface2); margin-left: 0.3rem; }
+
+    /* ── Healthchecks panel ── */
+    .hc-row {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.6rem 0;
+      border-bottom: 1px solid rgba(51,65,85,0.5);
+      font-size: 0.82rem;
+    }
+    .hc-row:last-child { border-bottom: none; }
+    .hc-status-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .hc-name { flex: 1; }
+    .hc-last { font-size: 0.7rem; color: var(--muted); }
+
+    /* ── Footer ── */
+    .footer-bar {
+      text-align: center;
+      font-size: 0.65rem;
+      color: var(--surface2);
+      margin-top: 1.5rem;
+    }
+
+    /* ── Spinner ── */
+    .spinner {
+      display: inline-block;
+      width: 13px; height: 13px;
+      border: 2px solid rgba(15,23,42,0.25);
+      border-top-color: #0F172A;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (prefers-reduced-motion: reduce) {
+      .spinner { animation: none; }
+      .btn, input { transition: none; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <h1>Casa de Pizza & Wings</h1>
+    <p>Automation Monitor — Lunch Special System</p>
+  </header>
+
+  <!-- Config -->
+  <div class="config">
+    <div class="config-title">Configuration</div>
+    <div class="config-grid">
+      <div class="field full">
+        <label for="wpUrl">WordPress Site URL</label>
+        <input id="wpUrl" type="url" placeholder="https://casadepizzawings.net" value="https://casadepizzawings.net">
+      </div>
+      <div class="field">
+        <label for="monitorKey">Monitor API Key <span style="color:var(--surface2)">(del endpoint PHP)</span></label>
+        <input id="monitorKey" type="password" placeholder="cambiar-por-clave-secreta-aleatoria">
+      </div>
+      <div class="field">
+        <label for="hcApiKey">Healthchecks.io Read-Only Key <span style="color:var(--surface2)">(opcional — Panel 3)</span></label>
+        <input id="hcApiKey" type="password" placeholder="hc_ro_xxxxxxxxxxxxxx">
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn" id="fetchBtn" onclick="fetchAll()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4"/></svg>
+        Refresh
+      </button>
+      <label class="auto-label">
+        <input type="checkbox" id="autoRefresh" onchange="toggleAuto()">
+        Auto-refresh cada 60s
+      </label>
+    </div>
+  </div>
+
+  <div class="alert" id="alertBox"></div>
+
+  <!-- Panels row 1: Lunch Status + WP Cron -->
+  <div class="panels">
+
+    <!-- Panel 1: Lunch Special Status -->
+    <div class="panel" id="panelLunch">
+      <div class="panel-label">Panel 1 — Lunch Special (WooCommerce)</div>
+      <div class="big-status">
+        <div class="status-dot" id="lunchDot"></div>
+        <div class="status-text" id="lunchLabel"></div>
+      </div>
+      <div class="meta-grid" id="lunchMeta"></div>
+      <div class="products-grid" id="productsGrid"></div>
+    </div>
+
+    <!-- Panel 2: WP Cron -->
+    <div class="panel" id="panelCron">
+      <div class="panel-label">Panel 2 — WP Cron Schedule</div>
+      <div id="cronRows"></div>
+    </div>
+
+  </div>
+
+  <!-- Panel 3: Clover / Manus (full width) -->
+  <div class="panel full-width" id="panelClover">
+    <div class="panel-label">Panel 3 — Clover POS Script (Manus via Healthchecks.io)</div>
+    <div id="hcRows"></div>
+  </div>
+
+  <div class="footer-bar" id="lastChecked"></div>
+
+</div>
+
+<script>
+const TZ = 'America/Los_Angeles';
+let autoTimer = null;
+
+/* ── Helpers ──────────────────────────────────────────────────────────────── */
+function fmt(iso) {
+  if (!iso) return '—';
+  try {
+    return new Date(iso).toLocaleString('en-US', {
+      timeZone: TZ, month: 'short', day: 'numeric',
+      hour: '2-digit', minute: '2-digit', hour12: true,
+    });
+  } catch { return iso; }
+}
+
+function countdown(iso) {
+  if (!iso) return '';
+  const diff = Math.round((new Date(iso) - Date.now()) / 1000);
+  if (diff < 0) return '(overdue)';
+  const h = Math.floor(diff / 3600);
+  const m = Math.floor((diff % 3600) / 60);
+  const s = diff % 60;
+  if (h > 0) return `in ${h}h ${m}m`;
+  if (m > 0) return `in ${m}m ${s}s`;
+  return `in ${s}s`;
+}
+
+function showError(msg) {
+  const el = document.getElementById('alertBox');
+  el.textContent = msg;
+  el.classList.add('visible');
+}
+function clearError() {
+  const el = document.getElementById('alertBox');
+  el.classList.remove('visible');
+}
+
+function iconSVG(color) {
+  return `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2.5"><circle cx="12" cy="12" r="10"/></svg>`;
+}
+
+/* ── Main fetch ───────────────────────────────────────────────────────────── */
+async function fetchAll() {
+  clearError();
+  const btn = document.getElementById('fetchBtn');
+  btn.disabled = true;
+  btn.innerHTML = `<span class="spinner"></span> Fetching…`;
+
+  const wpUrl = document.getElementById('wpUrl').value.replace(/\/$/, '');
+  const key   = document.getElementById('monitorKey').value.trim();
+  const hcKey = document.getElementById('hcApiKey').value.trim();
+
+  if (!wpUrl || !key) {
+    showError('Fill in WordPress URL and Monitor API Key.');
+    btn.disabled = false;
+    btn.innerHTML = refreshIcon() + ' Refresh';
+    return;
+  }
+
+  const [wpResult, hcResult] = await Promise.allSettled([
+    fetchWP(wpUrl, key),
+    hcKey ? fetchHC(hcKey) : Promise.resolve(null),
+  ]);
+
+  if (wpResult.status === 'rejected') {
+    showError('WP endpoint error: ' + wpResult.reason?.message);
+  } else {
+    renderWP(wpResult.value);
+  }
+
+  if (hcKey) {
+    if (hcResult.status === 'rejected') {
+      renderHCError(hcResult.reason?.message);
+    } else {
+      renderHC(hcResult.value);
+    }
+  } else {
+    renderHCEmpty();
+  }
+
+  const now = new Date().toLocaleString('en-US', {
+    timeZone: TZ, hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true,
+  });
+  document.getElementById('lastChecked').textContent = `Last checked: ${now} PT`;
+
+  btn.disabled = false;
+  btn.innerHTML = refreshIcon() + ' Refresh';
+}
+
+/* ── WordPress endpoint ───────────────────────────────────────────────────── */
+async function fetchWP(wpUrl, key) {
+  const url = `${wpUrl}/wp-json/casa/v1/lunch-status?key=${encodeURIComponent(key)}`;
+  const res = await fetch(url);
+  if (!res.ok) {
+    const d = await res.json().catch(() => ({}));
+    throw new Error(d.message || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+function renderWP(data) {
+  /* Panel 1 — Lunch status */
+  const active = data.lunch_active;
+  const dot    = document.getElementById('lunchDot');
+  const lbl    = document.getElementById('lunchLabel');
+  dot.className = 'status-dot ' + (active ? 'dot-green' : 'dot-red');
+  lbl.className = 'status-text ' + (active ? 'text-green' : 'text-red');
+  lbl.textContent = active ? 'ACTIVE' : 'INACTIVE';
+
+  document.getElementById('lunchMeta').innerHTML = `
+    <div class="meta-item">
+      <span class="meta-label">Products visible</span>
+      <span class="meta-value">${data.visible_count} / ${data.total}</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">Server time (PT)</span>
+      <span class="meta-value">${fmt(data.server_time)}</span>
+    </div>
+  `;
+
+  document.getElementById('productsGrid').innerHTML = (data.products || []).map(p => {
+    const cls = p.active ? 'active' : (p.visibility === 'unknown' ? 'unknown' : 'inactive');
+    const num = p.name.match(/#(\d+)/)?.[1] || '?';
+    return `<div class="prod-dot ${cls}" title="${p.name}">#${num}</div>`;
+  }).join('');
+
+  document.getElementById('panelLunch').classList.add('visible');
+
+  /* Panel 2 — WP Cron */
+  const c = data.cron || {};
+  const rows = [
+    {
+      label: 'Activate',
+      badge: c.activate_set ? 'badge-green' : 'badge-red',
+      badgeText: c.activate_set ? 'SET' : 'MISSING',
+      time: fmt(c.next_activate),
+      cd: c.next_activate ? countdown(c.next_activate) : '',
+    },
+    {
+      label: 'Deactivate',
+      badge: c.deactivate_set ? 'badge-green' : 'badge-red',
+      badgeText: c.deactivate_set ? 'SET' : 'MISSING',
+      time: fmt(c.next_deactivate),
+      cd: c.next_deactivate ? countdown(c.next_deactivate) : '',
+    },
+  ];
+
+  document.getElementById('cronRows').innerHTML = rows.map(r => `
+    <div class="cron-row">
+      <span class="cron-badge ${r.badge}">${r.badgeText}</span>
+      <span>${r.label}</span>
+      <span class="cron-time">${r.time} <span class="cron-countdown">${r.cd}</span></span>
+    </div>
+  `).join('');
+
+  document.getElementById('panelCron').classList.add('visible');
+}
+
+/* ── Healthchecks.io ──────────────────────────────────────────────────────── */
+async function fetchHC(apiKey) {
+  const res = await fetch('https://healthchecks.io/api/v3/checks/', {
+    headers: { 'X-Api-Key': apiKey },
+  });
+  if (!res.ok) throw new Error(`Healthchecks.io HTTP ${res.status}`);
+  return res.json();
+}
+
+function renderHC(data) {
+  const checks = (data.checks || [])
+    .filter(c => c.name && c.name.toLowerCase().includes('casa'));
+
+  if (!checks.length) {
+    document.getElementById('hcRows').innerHTML =
+      `<p style="color:var(--muted);font-size:0.8rem">No checks found with "casa" in name. Verify check names in Healthchecks.io.</p>`;
+    document.getElementById('panelClover').classList.add('visible');
+    return;
+  }
+
+  document.getElementById('hcRows').innerHTML = checks.map(c => {
+    const s = c.status;
+    const dotCls = s === 'up' ? 'dot-green' : s === 'down' ? 'dot-red' : s === 'grace' ? 'dot-yellow' : 'dot-gray';
+    const last = c.last_ping ? fmt(c.last_ping) : 'Never';
+    return `
+      <div class="hc-row">
+        <div class="hc-status-dot ${dotCls}"></div>
+        <div class="hc-name">${c.name}</div>
+        <div class="hc-last">Last ping: ${last}</div>
+        <span class="cron-badge ${s === 'up' ? 'badge-green' : s === 'down' ? 'badge-red' : 'badge-yellow'}">${s.toUpperCase()}</span>
+      </div>`;
+  }).join('');
+
+  document.getElementById('panelClover').classList.add('visible');
+}
+
+function renderHCError(msg) {
+  document.getElementById('hcRows').innerHTML =
+    `<p style="color:var(--red);font-size:0.8rem">Healthchecks.io error: ${msg}</p>`;
+  document.getElementById('panelClover').classList.add('visible');
+}
+
+function renderHCEmpty() {
+  document.getElementById('hcRows').innerHTML =
+    `<p style="color:var(--muted);font-size:0.8rem">Agrega la Healthchecks.io Read-Only Key arriba para activar este panel.</p>`;
+  document.getElementById('panelClover').classList.add('visible');
+}
+
+/* ── Auto-refresh ─────────────────────────────────────────────────────────── */
+function toggleAuto() {
+  const on = document.getElementById('autoRefresh').checked;
+  if (on) {
+    autoTimer = setInterval(fetchAll, 60000);
+  } else {
+    clearInterval(autoTimer);
+    autoTimer = null;
+  }
+}
+
+function refreshIcon() {
+  return `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4"/></svg>`;
+}
+
+/* ── Persist config in sessionStorage ─────────────────────────────────────── */
+['wpUrl', 'monitorKey', 'hcApiKey'].forEach(id => {
+  const saved = sessionStorage.getItem('cdp_' + id);
+  if (saved) document.getElementById(id).value = saved;
+  document.getElementById(id).addEventListener('input', e => {
+    sessionStorage.setItem('cdp_' + id, e.target.value);
+  });
+});
+
+document.querySelectorAll('input[type=text], input[type=url], input[type=password]').forEach(inp => {
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter') fetchAll(); });
+});
+</script>
+</body>
+</html>
